@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Target Click Game</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(135deg, #fbc2eb, #a6c1ee);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .game {
+      text-align: center;
+    }
+    .play-area {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      background-color: #fff;
+      border-radius: 12px;
+      margin: 20px auto;
+      border: 3px solid #333;
+      overflow: hidden;
+    }
+    .target {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-color: #ff3f34;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      color: white;
+      user-select: none;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      background-color: #0abde3;
+      color: white;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #0984e3;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    function App() {
+      const [targetPos, setTargetPos] = React.useState({ x: 0, y: 0 });
+      const [score, setScore] = React.useState(0);
+      const [gameOver, setGameOver] = React.useState(false);
+      const playAreaSize = 400;
+      const targetSize = 50;
+
+      const moveTarget = () => {
+        const x = Math.floor(Math.random() * (playAreaSize - targetSize));
+        const y = Math.floor(Math.random() * (playAreaSize - targetSize));
+        setTargetPos({ x, y });
+      };
+
+      React.useEffect(() => {
+        const interval = setInterval(() => {
+          moveTarget();
+        }, 1500); // Target moves every 1.5 sec
+        return () => clearInterval(interval);
+      }, []);
+
+      const handleClick = () => {
+        if (gameOver) return;
+        setScore(score + 1);
+        moveTarget();
+      };
+
+      const resetGame = () => {
+        setScore(0);
+        setGameOver(false);
+        moveTarget();
+      };
+
+      return (
+        <div className="game">
+          <h1>🎯 Target Click Game</h1>
+          <p>Score: {score}</p>
+          <div className="play-area">
+            {!gameOver && (
+              <div
+                className="target"
+                style={{ left: targetPos.x, top: targetPos.y }}
+                onClick={handleClick}
+              >
+                🎯
+              </div>
+            )}
+          </div>
+          <button onClick={resetGame}>🔁 Restart</button>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

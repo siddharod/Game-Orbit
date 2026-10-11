@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Riddle Quest</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+  <style>
+    /* 1. THEME VARIABLES (Unchanged) */
+    :root {
+      --bg-start: #1e3c72; --bg-end: #2a5298; --container-bg: rgba(255, 255, 255, 0.05); --container-border: rgba(255, 255, 255, 0.2); --accent-color: #ffdd59; --text-color: #fff; --input-bg: rgba(255, 255, 255, 0.15); --input-border: transparent; --button-start: #ff6f61; --button-end: #ffcc00; --button-text: #1a1a1a; --button-hover-shadow: rgba(255, 204, 0, 0.5);
+    }
+    .theme-kids {
+      --bg-start: #76b2fe; --bg-end: #b6eaff; --container-bg: rgba(255, 255, 255, 0.2); --container-border: rgba(255, 255, 255, 0.4); --accent-color: #ff8c00; --text-color: #333; --input-bg: rgba(255, 255, 255, 0.4); --input-border: transparent; --button-start: #ff7e5f; --button-end: #feb47b; --button-text: #fff; --button-hover-shadow: rgba(255, 126, 95, 0.6);
+    }
+    .theme-adults {
+      --bg-start: #0f2027; --bg-end: #2c5364; --container-bg: rgba(0, 0, 0, 0.2); --container-border: rgba(255, 255, 255, 0.1); --accent-color: #E6C77E; --text-color: #e0e0e0; --input-bg: rgba(0, 0, 0, 0.25); --input-border: rgba(230, 199, 126, 0.3); --button-start: #6d5b4b; --button-end: #a17d5c; --button-text: #ffffff; --button-hover-shadow: rgba(230, 199, 126, 0.4);
+    }
+
+    /* 2. CORE STYLES (Unchanged) */
+    body {
+      font-family: 'Poppins', sans-serif; margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; background: linear-gradient(135deg, var(--bg-start), var(--bg-end)); color: var(--text-color); overflow: hidden; transition: background 0.5s ease-in-out;
+    }
+    .container {
+      text-align: center; width: 90%; max-width: 500px; background: var(--container-bg); backdrop-filter: blur(12px); padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); border: 2px solid var(--container-border); animation: fadeIn 0.8s ease-in-out;
+    }
+    h1 { font-size: 2.2rem; color: var(--accent-color); text-shadow: 1px 1px 5px #00000070; margin-bottom: 20px; }
+    h2 { margin-bottom: 25px; color: var(--text-color); }
+    .riddle-text { font-size: 1.2rem; margin-bottom: 20px; min-height: 60px; line-height: 1.5; color: var(--text-color); }
+    input[type="text"] { padding: 14px; font-size: 16px; width: 80%; border-radius: 10px; border: 1px solid var(--input-border); outline: none; box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.2); background: var(--input-bg); color: var(--text-color); transition: all 0.3s ease; }
+    input[type="text"]::placeholder { color: var(--text-color); opacity: 0.7; }
+    input[type="text"]:focus { box-shadow: 0 0 10px var(--accent-color); }
+    .button { padding: 12px 22px; margin: 8px 6px; border: none; border-radius: 12px; background: linear-gradient(45deg, var(--button-start), var(--button-end)); color: var(--button-text); font-weight: bold; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.3s ease; }
+    .button:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 20px var(--button-hover-shadow); }
+    .feedback { margin-top: 15px; min-height: 28px; font-weight: bold; color: var(--accent-color); text-shadow: 1px 1px 4px #00000050; }
+    @keyframes fadeIn { from {opacity: 0; transform: translateY(-20px);} to {opacity: 1; transform: translateY(0);} }
+    
+    /* 3. ENHANCED CARD STYLES */
+    .selection-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 20px;
+      /* This creates the 3D space for the cards */
+      perspective: 1000px;
+    }
+
+    .category-card {
+      background: var(--container-bg);
+      border-radius: 20px; /* Slightly more rounded */
+      width: 160px;
+      height: 200px;
+      cursor: pointer;
+      border: 1px solid var(--container-border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      /* This enables 3D transformations for child elements */
+      transform-style: preserve-3d;
+      /* Smooths the transition back to the original state */
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .category-card:hover {
+      /* Add a glow using the theme's accent color */
+      box-shadow: 0 0 30px var(--accent-color);
+    }
+
+    .card-image {
+      font-size: 5rem; /* Larger emoji */
+      line-height: 1;
+      filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));
+      /* This makes the emoji "float" 50px in front of the card */
+      transform: translateZ(50px);
+    }
+    
+    .card-title {
+      font-size: 1.3rem;
+      margin-top: 10px;
+      font-weight: bold;
+      color: var(--text-color);
+      /* This makes the title float 30px in front of the card */
+      transform: translateZ(30px);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+
+    const riddlePool = [
+      {q:"What has keys but can't open locks?", a:"piano", hint:"You can play music with it.", category: "kids"}, {q:"I’m tall when I’m young, and short when I’m old. What am I?", a:"candle", hint:"I melt over time.", category: "kids"}, {q:"What gets wetter the more it dries?", a:"towel", hint:"You use it after a bath.", category: "kids"}, {q:"What has a head, a tail, is brown, and has no legs?", a:"coin", hint:"You use it to pay.", category: "kids"}, {q:"The more you take, the more you leave behind. What am I?", a:"footsteps", hint:"Think about walking.", category: "kids"}, {q:"What has one eye, but cannot see?", a:"needle", hint:"Used for sewing.", category: "kids"}, {q:"What has hands but cannot clap?", a:"clock", hint:"Shows time.", category: "kids"}, {q:"What belongs to you, but others use it more than you?", a:"name", hint:"It's your identity.", category: "kids"},
+      {q:"I speak without a mouth and hear without ears. What am I?", a:"echo", hint:"It's something that repeats your voice.", category: "adults"}, {q:"The more of this there is, the less you see. What is it?", a:"darkness", hint:"It appears at night.", category: "adults"}, {q:"What comes once in a minute, twice in a moment, but never in a thousand years?", a:"m", hint:"Look at the letters carefully.", category: "adults"}, {q:"Forward I am heavy, backward I am not. What am I?", a:"ton", hint:"Think of reversing the letters.", category: "adults"}, {q:"I have branches, but no fruit, trunk, or leaves. What am I?", a:"bank", hint:"Not a tree, think financial.", category: "adults"}, {q:"What has cities, but no houses; forests, but no trees; and water, but no fish?", a:"map", hint:"You look at me to navigate.", category: "adults"}, {q:"I’m taken from a mine, and shut in a wooden case, from which I am never released, and yet I am used by almost every person. What am I?", a:"pencil", hint:"Used for writing.", category: "adults"}, {q:"What can travel around the world while staying in a corner?", a:"stamp", hint:"You stick it on letters.", category: "adults"}
+    ];
+
+    // NEW Reusable Card Component
+    function CategoryCard({ emoji, title, onClick }) {
+      const cardRef = React.useRef(null);
+
+      const handleMouseMove = (e) => {
+        const card = cardRef.current;
+        const { left, top, width, height } = card.getBoundingClientRect();
+        const x = e.clientX - left;
+        const y = e.clientY - top;
+        
+        const rotateY = 20 * (x / width - 0.5);
+        const rotateX = -20 * (y / height - 0.5);
+
+        card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.1)`;
+      };
+
+      const handleMouseLeave = () => {
+        cardRef.current.style.transform = 'rotateX(0) rotateY(0) scale(1)';
+      };
+
+      return (
+        <div 
+          className="category-card"
+          ref={cardRef}
+          onClick={onClick}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="card-image">{emoji}</div>
+          <div className="card-title">{title}</div>
+        </div>
+      );
+    }
+
+    function RiddleQuest() {
+      const [gameMode, setGameMode] = React.useState(null); 
+      const [riddles, setRiddles] = React.useState([]);
+      const [current, setCurrent] = React.useState(0);
+      const [answer, setAnswer] = React.useState("");
+      const [feedback, setFeedback] = React.useState("");
+      const [completed, setCompleted] = React.useState(false);
+
+      React.useEffect(() => {
+        document.body.classList.remove('theme-kids', 'theme-adults');
+        if (gameMode === 'kids') document.body.classList.add('theme-kids');
+        else if (gameMode === 'adults') document.body.classList.add('theme-adults');
+      }, [gameMode]);
+
+      const startGame = (mode) => {
+        const filteredRiddles = riddlePool.filter(r => r.category === mode);
+        for (let i = filteredRiddles.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [filteredRiddles[i], filteredRiddles[j]] = [filteredRiddles[j], filteredRiddles[i]]; }
+        setRiddles(filteredRiddles); setGameMode(mode); setCurrent(0); setCompleted(false); setAnswer(""); setFeedback("");
+      };
+      
+      const backToMenu = () => { setGameMode(null); };
+
+      const handleSubmit = () => {
+        if (answer.trim().toLowerCase() === riddles[current].a.toLowerCase()) {
+          setFeedback("✅ Correct!");
+          if (current + 1 < riddles.length) { setTimeout(() => { setCurrent(current + 1); setAnswer(""); setFeedback(""); }, 800);
+          } else { setCompleted(true); }
+        } else { setFeedback("❌ Wrong! Try again."); }
+      };
+
+      const handleHint = () => alert(riddles[current].hint);
+      const handleReveal = () => alert("Answer: " + riddles[current].a);
+      
+      // Render Logic
+      if (!gameMode) {
+        return (
+          <div className="container">
+            <h1>Riddle Quest</h1>
+            <h2>Choose a Category</h2>
+            <div className="selection-container">
+              <CategoryCard 
+                emoji="🧒" 
+                title="Kids" 
+                onClick={() => startGame('kids')} 
+              />
+              <CategoryCard 
+                emoji="🧑" 
+                title="Adults" 
+                onClick={() => startGame('adults')} 
+              />
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="container">
+          {completed ? (
+            <>
+              <h1>Quest Complete!</h1><h2>🎉 Congratulations!</h2>
+              <button className="button" onClick={backToMenu}>Play Again</button>
+            </>
+          ) : (
+            <>
+              <h1>Riddle Quest</h1>
+              <div style={{color: 'var(--accent-color)', marginBottom: '10px'}}> Riddle {current + 1} of {riddles.length} </div>
+              <div className="riddle-text">{riddles[current].q}</div>
+              <input type="text" value={answer} placeholder="Type your answer here" onChange={(e) => setAnswer(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSubmit()} />
+              <div>
+                <button className="button" onClick={handleSubmit}>Submit</button>
+                <button className="button" onClick={handleHint}>Hint</button>
+                <button className="button" onClick={handleReveal}>Reveal</button>
+              </div>
+              <div className="feedback">{feedback}</div>
+              <button className="button" style={{marginTop: '20px', background: 'rgba(0,0,0,0.1)', color: 'var(--text-color)', border: '1px solid var(--text-color)'}} onClick={backToMenu}> Back to Menu </button>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<RiddleQuest />);
+  </script>
+</body>
+</html>

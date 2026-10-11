@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Game-Orbit 🎮</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Poppins:wght@300;400;600&display=swap');
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #0a0a0f, #000);
+      color: #fff;
+      font-family: 'Poppins', sans-serif;
+      overflow-x: hidden;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      border-bottom: 2px solid #14f195;
+      box-shadow: 0 0 20px #14f19550;
+    }
+
+    header h1 {
+      font-family: 'Orbitron', sans-serif;
+      color: #14f195;
+      letter-spacing: 2px;
+      text-shadow: 0 0 15px #14f195;
+      margin: 0;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: rgba(255,255,255,0.06);
+      border-radius: 30px;
+      padding: 8px 15px;
+      transition: 0.3s;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      color: #fff;
+      outline: none;
+      font-size: 16px;
+      width: 220px;
+    }
+
+    .search-box:hover {
+      box-shadow: 0 0 15px #14f195;
+    }
+
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 25px;
+      padding: 40px;
+      justify-items: center;
+      animation: fadeIn 0.6s ease-in;
+    }
+
+    .game-card {
+      width: 100%;
+      max-width: 320px;
+      background: linear-gradient(145deg, #101018, #060606);
+      border: 1px solid #14f19530;
+      border-radius: 16px;
+      overflow: hidden;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 0 15px #14f19510;
+    }
+
+    .game-card:hover {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 0 25px #14f19560;
+    }
+
+    .game-card img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+      display:block;
+    }
+
+    .game-card h3 {
+      padding: 12px 10px;
+      font-family: 'Orbitron', sans-serif;
+      color: #14f195;
+      letter-spacing: 0.8px;
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .meta {
+      padding: 8px 12px 16px;
+      color: #cfeee9;
+      font-size: 0.9rem;
+    }
+
+    .placeholder {
+      color: #9ff5d7;
+      text-align: center;
+      width:100%;
+      margin-top:10px;
+      font-size:0.95rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 18px;
+      border-top: 1px solid #14f19540;
+      background: rgba(0,0,0,0.8);
+      color: #999;
+      font-size: 14px;
+    }
+
+    /* Pie chart section */
+    .chart-section {
+      background: rgba(0, 0, 0, 0.7);
+      border-top: 1px solid #14f19540;
+      text-align: center;
+      padding: 50px 20px;
+      box-shadow: 0 -5px 20px rgba(20, 241, 149, 0.2);
+    }
+
+    .chart-section h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: #14f195;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px #14f195;
+      margin-bottom: 20px;
+    }
+
+    canvas {
+      max-width: 420px;
+      margin: auto;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width:600px){
+      header { padding: 14px; }
+      .game-grid { padding: 18px; gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Game-Orbit</h1>
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search games..." onkeyup="filterGames()">
+    </div>
+  </header>
+
+  <section class="game-grid" id="gameGrid">
+    <!-- Local Games -->
+    <div class="game-card" data-name="pop the balloon">
+      <img src="https://i.ytimg.com/vi/TANJP041TKE/maxresdefault.jpg" alt="Pop the Balloons">
+      <h3>Pop The Balloon</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div class="game-card" data-name="hangman game">
+      <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQpi3oF7qOJpwD_0nnWaIYsaubd4tTT7q0TGuvNV7Qx6riUTI0ZBTHgzRRnzMfKUjTodq4&usqp=CAU" alt="Hangman">
+      <h3>Hangman Game</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div class="game-card" data-name="mine play">
+      <img src="https://storage.googleapis.com/kickthe/assets/images/games/mines-hacksawgaming/gb/gbp/tile_large.jpg" alt="Mine Play">
+      <h3>Mine Play</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div class="game-card" data-name="pac-man game">
+      <img src="https://blog.sciencemuseum.org.uk/wp-content/uploads/2017/10/Pacman-400x250.gif" alt="Pac-Man">
+      <h3>Pac-Man Game</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div class="game-card" data-name="flappy bird">
+      <img src="https://platform.theverge.com/wp-content/uploads/sites/2/chorus/uploads/chorus_asset/file/25617319/flappy_bird_new.png?quality=90&strip=all&crop=0,30.334004392387,100,37.408491947291" alt="Typing">
+      <h3>Flappy Bird</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div class="game-card" data-name="riddle game">
+      <img src="https://imgs.crazygames.com/riddleschool.png?metadata=none&quality=60&height=2864" alt="Riddle">
+      <h3>Riddle Game</h3>
+      <div class="meta">Local game</div>
+    </div>
+
+    <div id="api-placeholder" class="placeholder">Fetching 4 featured games...</div>
+  </section>
+
+  <!-- PIE CHART SECTION -->
+  <section class="chart-section">
+    <h2>📊 Players Distribution</h2>
+    <canvas id="playerChart"></canvas>
+  </section>
+
+  <footer>
+    © 2025 Game-Orbit | Designed for Gamers 🎮
+  </footer>
+
+  <script>
+  const gameLinks = {
+    "pop the balloon": "target.html",
+    "hangman game": "hangman.html",
+    "mine play": "minesweeper.html",
+    "pac-man game": "pacman.html",
+    "flappy bird": "flappy_bird.html",
+    "riddle game": "riddle.html"
+  };
+
+  function filterGames() {
+    const searchValue = document.getElementById('search').value.toLowerCase();
+    const cards = document.querySelectorAll('.game-card');
+    cards.forEach(card => {
+      const name = (card.getAttribute('data-name') || '').toLowerCase();
+      card.style.display = name.includes(searchValue) ? 'block' : 'none';
+    });
+  }
+
+  function setupLocalGames() {
+    document.querySelectorAll('.game-card').forEach(card => {
+      const name = (card.getAttribute('data-name') || '').toLowerCase();
+      if (gameLinks[name]) {
+        card.addEventListener('click', () => {
+          window.location.href = gameLinks[name];
+        });
+      }
+    });
+  }
+
+  async function fetchAndInsertAPIGames() {
+    const placeholder = document.getElementById('api-placeholder');
+    const grid = document.getElementById('gameGrid');
+
+    try {
+      const apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.freetogame.com/api/games?platform=browser');
+      const res = await fetch(apiUrl);
+      const wrapper = await res.json();
+      const data = JSON.parse(wrapper.contents);
+
+      const shuffled = data.sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, 4);
+
+      placeholder && placeholder.remove();
+
+      selected.forEach(game => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        card.setAttribute('data-name', game.title.toLowerCase());
+        card.innerHTML = `
+          <img src="${game.thumbnail}" alt="${escapeHtml(game.title)}">
+          <h3>${escapeHtml(game.title)}</h3>
+          <div class="meta">API — ${escapeHtml(game.genre)} • ${escapeHtml(game.platform)}</div>
+        `;
+        card.addEventListener('click', () => window.open(game.game_url, '_blank'));
+        grid.appendChild(card);
+      });
+    } catch (err) {
+      console.error('Error fetching API games:', err);
+      if (placeholder) placeholder.textContent = '⚠️ Could not load API games right now.';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => (
+      { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]
+    ));
+  }
+
+  // PIE CHART INITIALIZATION
+  function renderPlayerChart() {
+    const ctx = document.getElementById('playerChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: ['Online Players', 'Offline Players'],
+        datasets: [{
+          data: [65, 35], // Example data: 65% online, 35% offline
+          backgroundColor: ['#14f195', '#007bff'],
+          borderColor: '#0a0a0f',
+          borderWidth: 2,
+          hoverOffset: 10
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: '#fff',
+              font: { size: 14 }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  window.addEventListener('load', () => {
+    setupLocalGames();
+    fetchAndInsertAPIGames();
+    renderPlayerChart();
+  });
+  </script>
+
+</body>
+</html>

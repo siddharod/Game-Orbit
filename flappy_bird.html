@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cute Flappy Bird Game with UI & Leaderboard</title>
+<style>
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: linear-gradient(to bottom, #87ceeb, #f0f9ff);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+  }
+  #game-container {
+    position: relative;
+    width: 90vw;
+    max-width: 480px;
+    height: 75vh;
+    max-height: 640px;
+    background: #70c5ce;
+    border-radius: 20px;
+    box-shadow: 0 0 15px #3b9dbf;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    background: transparent;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+  }
+  #score {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.5rem;
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 2px 2px 5px #0a548b;
+    user-select: none;
+    z-index: 10;
+  }
+  #start-screen, #game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 64, 96, 0.9);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+    z-index: 20;
+    padding: 20px;
+    text-align: center;
+  }
+  #start-screen h1 {
+    font-size: 3rem;
+    margin-bottom: 10px;
+    user-select: none;
+  }
+  #start-screen p {
+    font-size: 1.3rem;
+    margin-bottom: 30px;
+    user-select: none;
+  }
+  button {
+    background: #ff6f61;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: white;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    user-select: none;
+  }
+  button:hover {
+    background: #ff3b1f;
+  }
+  #game-over h2 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    user-select: none;
+  }
+  #leaderboard {
+    margin-top: 15px;
+    text-align: left;
+    width: 60%;
+    max-width: 300px;
+    background: rgba(255 255 255 / 0.2);
+    padding: 10px 15px;
+    border-radius: 12px;
+  }
+  #leaderboard h3 {
+    margin-top: 0;
+    user-select: none;
+  }
+  #leaderboard ol {
+    padding-left: 20px;
+  }
+  #leaderboard li {
+    font-size: 1.2rem;
+    user-select: none;
+  }
+  #achievement-notif {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffd700cc;
+    color: #333;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    box-shadow: 0 0 10px #ffdd0055;
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.5s ease;
+    z-index: 30;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game"></canvas>
+  <div id="score">0</div>
+
+  <!-- Start Screen -->
+  <div id="start-screen">
+    <h1>Flappy Bird 🐦</h1>
+    <p>Press Space or Click to flap the wings.<br />Avoid pipes and score as much as you can!</p>
+    <button id="start-btn">Start Game</button>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="game-over" style="display:none;">
+    <h2>Game Over!</h2>
+    <p>Your score: <span id="final-score">0</span></p>
+    <button id="restart-btn">Restart</button>
+    <div id="leaderboard">
+      <h3>Leaderboard</h3>
+      <ol id="leaderboard-list"></ol>
+    </div>
+  </div>
+
+  <!-- Achievement Notification -->
+  <div id="achievement-notif"></div>
+</div>
+
+<script>
+// Canvas Setup
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const scoreDisplay = document.getElementById('score');
+const startScreen = document.getElementById('start-screen');
+const gameOverScreen = document.getElementById('game-over');
+const restartBtn = document.getElementById('restart-btn');
+const startBtn = document.getElementById('start-btn');
+const finalScoreDisplay = document.getElementById('final-score');
+const leaderboardList = document.getElementById('leaderboard-list');
+const achievementNotif = document.getElementById('achievement-notif');
+
+let width, height;
+function resize() {
+  width = canvas.clientWidth;
+  height = canvas.clientHeight;
+  canvas.width = width * devicePixelRatio;
+  canvas.height = height * devicePixelRatio;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+resize();
+window.addEventListener('resize', () => {
+  resize();
+});
+
+// Game Variables
+const bird = {
+  x: 80,
+  y: 150,
+  radius: 18,
+  velocity: 0,
+  gravity: 0.5,
+  lift: -10,
+  frame: 0,
+  flapSpeed: 0.15,
+  flapFrame: 0,
+};
+
+const pipeWidth = 50;
+const pipeGap = 150;
+const pipeSpeed = 2.5;
+
+let pipes = [];
+let frameCount = 0;
+let score = 0;
+let gameRunning = false;
+let achievementUnlocked = new Set();
+
+// Sounds
+const flapSound = new Audio('https://actions.google.com/sounds/v1/animals/bird_flap.ogg');
+const scoreSound = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+const hitSound = new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+
+// Bird Sprite (Cute simple animation)
+function drawBird() {
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.rotate(Math.min(Math.max(bird.velocity / 10, -0.6), 0.4));
+
+  // Body
+  ctx.fillStyle = '#FFD166';
+  ctx.strokeStyle = '#E3B341';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, bird.radius, bird.radius * 0.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // Wing - flapping
+  const flapAngle = Math.sin(bird.flapFrame) * 0.4;
+  ctx.fillStyle = '#F4A261';
+  ctx.beginPath();
+  ctx.ellipse(-10, 5, 10, 20, flapAngle, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.ellipse(8, -5, 9, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.ellipse(10, -4, 5, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = '#E76F51';
+  ctx.beginPath();
+  ctx.moveTo(18, 3);
+  ctx.lineTo(32, 0);
+  ctx.lineTo(18, -8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// Pipes
+function createPipe() {
+  const topHeight = Math.random() * (height - pipeGap - 100) + 50;
+  return {
+    x: width,
+    top: topHeight,
+    bottom: topHeight + pipeGap,
+    width: pipeWidth,
+  };
+}
+
+function drawPipe(pipe) {
+  ctx.fillStyle = '#264653';
+  ctx.strokeStyle = '#1B3A4B';
+  ctx.lineWidth = 4;
+
+  // Top pipe
+  ctx.beginPath();
+  ctx.moveTo(pipe.x, 0);
+  ctx.lineTo(pipe.x + pipe.width, 0);
+  ctx.lineTo(pipe.x + pipe.width, pipe.top);
+  ctx.lineTo(pipe.x, pipe.top);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Bottom pipe
+  ctx.beginPath();
+  ctx.moveTo(pipe.x, pipe.bottom);
+  ctx.lineTo(pipe.x + pipe.width, pipe.bottom);
+  ctx.lineTo(pipe.x + pipe.width, height);
+  ctx.lineTo(pipe.x, height);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Pipe rims
+  ctx.fillStyle = '#2a475f';
+  ctx.beginPath();
+  ctx.ellipse(pipe.x + pipe.width / 2, pipe.top, pipe.width / 2, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(pipe.x + pipe.width / 2, pipe.bottom, pipe.width / 2, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Collision detection
+function checkCollision(pipe) {
+  if (
+    bird.x + bird.radius > pipe.x &&
+    bird.x - bird.radius < pipe.x + pipe.width &&
+    (bird.y - bird.radius < pipe.top || bird.y + bird.radius > pipe.bottom)
+  ) {
+    return true;
+  }
+  if (bird.y + bird.radius > height || bird.y - bird.radius < 0) {
+    return true;
+  }
+  return false;
+}
+
+// Leaderboard Management
+function getLeaderboard() {
+  return JSON.parse(localStorage.getItem('flappyLeaderboard')) || [];
+}
+
+function saveLeaderboard(newScore) {
+  let leaderboard = getLeaderboard();
+  leaderboard.push(newScore);
+  leaderboard.sort((a, b) => b - a);
+  leaderboard = leaderboard.slice(0, 5);
+  localStorage.setItem('flappyLeaderboard', JSON.stringify(leaderboard));
+}
+
+function displayLeaderboard() {
+  const leaderboard = getLeaderboard();
+  leaderboardList.innerHTML = '';
+  if (leaderboard.length === 0) {
+    leaderboardList.innerHTML = '<li>No scores yet!</li>';
+    return;
+  }
+  leaderboard.forEach((score, i) => {
+    const li = document.createElement('li');
+    li.textContent = `${i + 1}. ${score}`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+// Achievement Notifications
+const achievements = [
+  { score: 10, message: 'Achievement Unlocked: 10 Pipes Passed!' },
+  { score: 20, message: 'Achievement Unlocked: 20 Pipes Passed!' },
+  { score: 50, message: 'Achievement Unlocked: 50 Pipes Passed!' },
+];
+
+function showAchievement(message) {
+  achievementNotif.textContent = message;
+  achievementNotif.style.opacity = '1';
+  setTimeout(() => {
+    achievementNotif.style.opacity = '0';
+  }, 2500);
+}
+
+function checkAchievements(currentScore) {
+  for (const ach of achievements) {
+    if (currentScore >= ach.score && !achievementUnlocked.has(ach.score)) {
+      achievementUnlocked.add(ach.score);
+      showAchievement(ach.message);
+    }
+  }
+}
+
+// Game loop
+function gameLoop() {
+  if (!gameRunning) return;
+  ctx.clearRect(0, 0, width, height);
+
+  // Bird physics
+  bird.velocity += bird.gravity;
+  bird.velocity *= 0.9;
+  bird.y += bird.velocity;
+  bird.flapFrame += bird.flapSpeed;
+
+  drawBird();
+
+  if (frameCount % 90 === 0) {
+    pipes.push(createPipe());
+  }
+
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    pipes[i].x -= pipeSpeed;
+
+    drawPipe(pipes[i]);
+
+    if (checkCollision(pipes[i])) {
+      endGame();
+    }
+
+    if (pipes[i].x + pipeWidth < bird.x && !pipes[i].scored) {
+      score++;
+      pipes[i].scored = true;
+      scoreDisplay.textContent = score;
+      scoreSound.play().catch(() => {});
+      checkAchievements(score);
+    }
+
+    if (pipes[i].x + pipeWidth < 0) {
+      pipes.splice(i, 1);
+    }
+  }
+
+  frameCount++;
+  requestAnimationFrame(gameLoop);
+}
+
+// Start game
+function startGame() {
+  bird.y = height / 2;
+  bird.velocity = 0;
+  pipes = [];
+  frameCount = 0;
+  score = 0;
+  achievementUnlocked.clear();
+  scoreDisplay.textContent = 0;
+  gameRunning = true;
+  startScreen.style.display = 'none';
+  gameOverScreen.style.display = 'none';
+  gameLoop();
+}
+
+// End game
+function endGame() {
+  gameRunning = false;
+  hitSound.play().catch(() => {});
+  finalScoreDisplay.textContent = score;
+  saveLeaderboard(score);
+  displayLeaderboard();
+  gameOverScreen.style.display = 'flex';
+}
+
+// Controls
+function flap() {
+  if (!gameRunning) startGame();
+  bird.velocity = bird.lift;
+  flapSound.play().catch(() => {});
+}
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault();
+    flap();
+  }
+});
+
+window.addEventListener('mousedown', () => {
+  flap();
+});
+
+restartBtn.addEventListener('click', () => {
+  startGame();
+});
+
+startBtn.addEventListener('click', () => {
+  startGame();
+});
+
+</script>
+</body>
+</html>

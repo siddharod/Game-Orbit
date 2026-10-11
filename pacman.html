@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pac-Man Arcade Clone</title>
+    <style>
+        /* Base Styling */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #000;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Score and Status Board */
+        #game-info {
+            display: flex;
+            justify-content: space-between;
+            /* Increased max size from 400px to 500px for better scaling on larger screens */
+            width: clamp(200px, 90vw, 500px); 
+            max-width: 500px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 255, 0, 0.5);
+        }
+        
+        /* Game Board Container - Now fully responsive and maintains a perfect 1:1 aspect ratio */
+        #game-board {
+            /* Consistent responsive width, up to 500px */
+            width: clamp(200px, 90vw, 500px); 
+            max-width: 500px;
+            /* Forces the height to match the width, keeping the grid square */
+            aspect-ratio: 1 / 1; 
+            background-color: #000;
+            display: grid;
+            /* Grid will be set by JS, but this ensures a square shape */
+            border: 3px solid #0000ff; 
+            box-shadow: 0 0 20px #0000ff;
+        }
+
+        .square {
+            /* This will be 1/20th of the container size */
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        
+        /* Wall Styling */
+        .wall {
+            background-color: #0000ff;
+            border: 1px solid #0000ff;
+            border-radius: 4px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Dot Styling */
+        .dot {
+            /* These percentages ensure the dots scale perfectly with the square size */
+            width: 15%;
+            height: 15%;
+            background-color: #ffb899;
+            border-radius: 50%;
+            box-shadow: 0 0 3px #ffb899;
+        }
+
+        /* Power Pellet Styling */
+        .power-pellet {
+            width: 40%;
+            height: 40%;
+            background-color: #ffb899;
+            border-radius: 50%;
+            animation: pulse 0.5s infinite alternate;
+            z-index: 10;
+        }
+
+        @keyframes pulse {
+            from { opacity: 1; }
+            to { opacity: 0.5; }
+        }
+
+        /* PAC-MAN STYLING AND ANIMATION */
+        .pac-man {
+            width: 80%;
+            height: 80%;
+            background-color: #ff0;
+            border-radius: 50%;
+            position: relative;
+            z-index: 20;
+            /* Default transform (right-facing mouth) */
+            transform: rotate(0deg); 
+            animation: chomp 0.15s infinite alternate;
+        }
+        
+        /* The mouth cut-out */
+        .pac-man::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 50%;
+            background-color: #000;
+            /* Initial mouth position (right-facing) */
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+            transform-origin: 0% 0%; /* Rotate around the center left edge */
+            z-index: 21;
+        }
+
+        /* Keyframes for the chomping animation */
+        @keyframes chomp {
+            from {
+                clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+            }
+            to {
+                clip-path: polygon(10% 10%, 100% 0%, 100% 100%, 0% 100%);
+            }
+        }
+        
+        /* Pac-Man Direction Transforms */
+        .pac-man.right { transform: rotate(0deg); }
+        .pac-man.down { transform: rotate(90deg); }
+        .pac-man.left { transform: rotate(180deg); }
+        .pac-man.up { transform: rotate(270deg); }
+
+        /* GHOST STYLING AND ANIMATION */
+        .ghost {
+            width: 80%;
+            height: 80%;
+            border-radius: 50% 50% 0 0;
+            position: relative;
+            z-index: 15;
+            animation: move-bob 0.4s infinite alternate;
+        }
+        
+        /* Ghost 'Legs' (zigzag bottom) */
+        .ghost::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 25%;
+            /* Creating the zigzag pattern */
+            clip-path: polygon(
+                0% 0%, 10% 100%, 20% 0%, 30% 100%, 40% 0%, 50% 100%, 
+                60% 0%, 70% 100%, 80% 0%, 90% 100%, 100% 0%
+            );
+            background: inherit; /* Use the ghost's color */
+        }
+
+        /* Ghost Eyes (Always white) */
+        .ghost::before {
+            content: '👀'; /* Using emoji for simple, scalable eyes */
+            font-size: 50%;
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white; 
+            z-index: 16;
+        }
+
+        /* Individual Ghost Colors */
+        .blinky { background-color: #ff0000; } /* Red */
+        .pinky { background-color: #ffb8ff; } /* Pink */
+        .inky { background-color: #00ffff; } /* Cyan */
+        .clyde { background-color: #ffb851; } /* Orange */
+
+        /* Scared Ghost State */
+        .scared-ghost {
+            background-color: #0000ff !important; /* Blue */
+            animation: scared-flash 0.5s infinite alternate;
+        }
+        .scared-ghost::before {
+            content: '😨'; /* Scared emoji eyes */
+            font-size: 50%;
+            color: #fff;
+        }
+
+        /* Ghost Bobbing Animation */
+        @keyframes move-bob {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-3px); }
+        }
+
+        /* Scared Flash Animation */
+        @keyframes scared-flash {
+            0% { background-color: #0000ff; }
+            50% { background-color: #fff; }
+            100% { background-color: #0000ff; }
+        }
+        
+        /* Ghost Eaten State (Eyes only) */
+        .eaten-ghost {
+            background-color: transparent !important;
+            animation: none !important;
+            border-radius: 50%;
+        }
+        .eaten-ghost::after { content: none; }
+        .eaten-ghost::before {
+            content: '👁️👁️';
+            font-size: 100%;
+            color: #fff;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Message Box Styling (for Game Over/Win) */
+        #message-box {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 100;
+            pointer-events: none; /* Initially non-interactive */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #message-box.active {
+            opacity: 1;
+            pointer-events: auto; /* Interactive when active */
+        }
+        .message-title {
+            font-size: 3rem;
+            color: #ff0;
+            text-shadow: 0 0 10px #ff0;
+            margin-bottom: 20px;
+        }
+        .message-content {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+        }
+        .message-button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #000;
+            background-color: #ff0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 5px 10px rgba(255, 255, 0, 0.5);
+            transition: transform 0.1s;
+        }
+        .message-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Mobile Controls (Swipe UI) */
+        #mobile-controls {
+            display: none; /* Hidden by default, shown via JS on smaller screens */
+            width: 100%;
+            max-width: 500px; /* Aligned with game board max-width */
+            margin-top: 20px;
+            padding: 10px 0;
+        }
+        .control-row {
+            display: flex;
+            justify-content: center;
+        }
+        .mobile-btn {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background-color: #222;
+            color: #ff0;
+            border: 2px solid #ff0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 3px 5px rgba(255, 255, 0, 0.4);
+            transition: background-color 0.1s;
+        }
+        .mobile-btn:active {
+            background-color: #444;
+        }
+        .spacer {
+            width: 70px; /* To align the center button */
+            height: 60px;
+            margin: 5px;
+        }
+        @media (max-width: 600px) {
+            #mobile-controls {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-info">
+        <div>Score: <span id="score">0</span></div>
+        <div>Lives: <span id="lives">3</span></div>
+    </div>
+    
+    <!-- The Game Board -->
+    <div id="game-board">
+        <!-- Cells will be generated here by JavaScript -->
+    </div>
+
+    <!-- Message Box for Game Over/Win -->
+    <div id="message-box">
+        <div class="message-title" id="message-title"></div>
+        <div class="message-content" id="message-content"></div>
+        <button class="message-button" onclick="startGame()">Play Again</button>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobile-controls">
+        <div class="control-row">
+            <div class="spacer"></div>
+            <div class="mobile-btn" data-move="ArrowUp">↑</div>
+            <div class="spacer"></div>
+        </div>
+        <div class="control-row">
+            <div class="mobile-btn" data-move="ArrowLeft">←</div>
+            <div class="mobile-btn" data-move="Stop">⬤</div>
+            <div class="mobile-btn" data-move="ArrowRight">→</div>
+        </div>
+        <div class="control-row">
+            <div class="spacer"></div>
+            <div class="mobile-btn" data-move="ArrowDown">↓</div>
+            <div class="spacer"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA & CONFIGURATION ---
+        const width = 20; // 20x20 grid
+        const board = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const messageBox = document.getElementById('message-box');
+        const messageTitle = document.getElementById('message-title');
+        const messageContent = document.getElementById('message-content');
+        const PACMAN_SPEED = 200; // Pac-Man moves every 200ms
+        const GHOST_FRIGHTENED_DURATION = 8000; // 8 seconds
+        const PACMAN_DIRECTIONS = {
+            'ArrowRight': 1,
+            'ArrowLeft': -1,
+            'ArrowUp': -width,
+            'ArrowDown': width,
+            'right': 1,
+            'left': -1,
+            'up': -width,
+            'down': width,
+        };
+
+        let squares = [];
+        let score = 0;
+        let lives = 3;
+        let pacmanCurrentIndex = 369; // R18, C9
+        let pacmanDirection = 'right';
+        let requestedDirection = 'ArrowRight'; // Queued direction for continuous movement
+        let isGameRunning = false;
+        let pacmanIntervalId = null; // Single main game loop ID
+        let totalDots = 0;
+        let dotsEaten = 0;
+        let ghostScoreMultiplier = 1; // 1x (200), 2x (400), 4x (800), 8x (1600)
+        
+        // Map Key: 
+        // 0 - empty, 
+        // 1 - wall, 
+        // 2 - dot, 
+        // 3 - power pellet, 
+        // 4 - ghost lair (no dots),
+        // 5 - ghost lair door
+        const initialLayout = [
+            1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // R0
+            1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1, // R1
+            1,3,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,3,1, // R2
+            1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1, // R3
+            1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1, // R4
+            1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1, // R5
+            1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1, // R6
+            1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1, // R7
+            0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0, // R8 (Tunnel)
+            1,1,1,1,1,2,1,0,1,4,4,1,0,1,2,1,1,1,1,1, // R9
+            1,0,0,0,0,2,0,0,1,4,5,1,0,0,2,0,0,0,0,1, // R10 (Lair Door)
+            1,1,1,1,1,2,1,0,1,4,4,1,0,1,2,1,1,1,1,1, // R11
+            0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0, // R12 (Tunnel)
+            1,1,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,1,1, // R13
+            1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1, // R14
+            1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1, // R15
+            1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1, // R16 (320-339)
+            // R17 (340-359): Path above start position
+            1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,
+            // R18 (360-379): Pac-Man starts at 369.
+            1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,
+            // R19 (380-399): Path below start position
+            1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1
+        ];
+
+        // Helper function for distance calculation (Manhattan distance for grid)
+        function manhattanDistance(index1, index2) {
+            const x1 = index1 % width;
+            const y1 = Math.floor(index1 / width);
+            const x2 = index2 % width;
+            const y2 = Math.floor(index2 / width);
+            return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+        }
+
+        // --- GHOST CLASS ---
+        class Ghost {
+            constructor(className, startIndex, speed, aiType) {
+                this.className = className;
+                this.startIndex = startIndex;
+                this.currentIndex = startIndex;
+                this.speed = speed;
+                this.aiType = aiType; // 'chase', 'scatter', 'random'
+                this.isFrightened = false;
+                this.isEaten = false;
+                this.direction = 1; // 1:right, -1:left, -width:up, width:down
+                this.directions = [-1, 1, -width, width];
+                this.lastDirection = 1;
+                this.originalSpeed = speed; // Store original speed
+            }
+
+            // Determines the best direction based on the ghost's AI type
+            calculateNextDirection() {
+                // If Eaten, priority is returning to lair
+                if (this.isEaten) {
+                    return this.getDirectionToTarget(this.startIndex);
+                }
+
+                // If Frightened, move randomly (but not backwards)
+                if (this.isFrightened) {
+                    return this.getRandomValidDirection();
+                }
+
+                // Normal AI - only Blinky chases for now
+                if (this.aiType === 'chase') {
+                    return this.getDirectionToTarget(pacmanCurrentIndex);
+                } else {
+                    // Default to simple random pathing for others
+                    return this.getRandomValidDirection();
+                }
+            }
+
+            // Gets a valid random direction that is not backwards
+            getRandomValidDirection() {
+                const opposite = -this.lastDirection;
+                const availableDirections = this.directions.filter(dir => {
+                    if (dir === opposite) return false;
+                    const newIndex = this.currentIndex + dir;
+                    const nextTileValue = initialLayout[newIndex];
+                    // Can't move into a wall or ghost lair door
+                    return nextTileValue !== 1 && nextTileValue !== 5;
+                });
+
+                if (availableDirections.length > 0) {
+                    return availableDirections[Math.floor(Math.random() * availableDirections.length)];
+                }
+                // If cornered, sometimes you have to go back
+                return opposite;
+            }
+
+            // Blinky's Chasing AI: Choose the direction that leads to the minimum distance to the target
+            getDirectionToTarget(targetIndex) {
+                let bestDirection = this.lastDirection;
+                let minDistance = Infinity;
+                const opposite = -this.lastDirection;
+                
+                // Only consider directions that are NOT the opposite of the last successful move
+                const candidateDirections = this.directions.filter(dir => dir !== opposite);
+
+                candidateDirections.forEach(dir => {
+                    const newIndex = this.currentIndex + dir;
+                    
+                    // Check boundaries and walls (including lair door)
+                    const isWall = !squares[newIndex] || squares[newIndex].classList.contains('wall');
+                    const isLairDoor = initialLayout[newIndex] === 5;
+
+                    if (!isWall && !isLairDoor) {
+                        const distance = manhattanDistance(newIndex, targetIndex);
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            bestDirection = dir;
+                        }
+                    }
+                });
+
+                // If no better move is found, try the last direction (if valid) or a random one
+                if (bestDirection === opposite) {
+                    const nextIndex = this.currentIndex + this.lastDirection;
+                    if (squares[nextIndex] && !squares[nextIndex].classList.contains('wall') && initialLayout[nextIndex] !== 5) {
+                        return this.lastDirection;
+                    }
+                    return this.getRandomValidDirection();
+                }
+
+                return bestDirection;
+            }
+
+
+            // Centralized move function called by the main game loop
+            gameLoopMove() {
+                if (!isGameRunning) return;
+                
+                // Only move if enough time has passed based on the ghost's speed (higher speed = lower move interval)
+                // Since this is called every PACMAN_SPEED, we check against their relative speed
+                if (Date.now() % this.speed < PACMAN_SPEED) {
+                    return;
+                }
+
+                // If Eaten and back at start, reset state
+                if (this.isEaten && this.currentIndex === this.startIndex) {
+                    this.isEaten = false;
+                    this.speed = this.originalSpeed;
+                    squares[this.currentIndex].classList.remove('eaten-ghost');
+                    this.lastDirection = this.directions[Math.floor(Math.random() * this.directions.length)];
+                    return;
+                }
+
+                // Calculate next direction based on AI/State
+                const nextDirection = this.calculateNextDirection();
+                let newIndex = this.currentIndex + nextDirection;
+
+                // Handle teleport tunnel (simplified: only Blinky/Clyde can start outside lair, so only teleport outside lair)
+                if (newIndex === 179 && nextDirection === 1) newIndex = 160; 
+                else if (newIndex === 160 && nextDirection === -1) newIndex = 179;
+
+                // Only move if not hitting a wall or moving into the lair door (unless Eaten)
+                const isWall = !squares[newIndex] || squares[newIndex].classList.contains('wall');
+                const isLairDoor = initialLayout[newIndex] === 5 && !this.isEaten;
+
+                if (!isWall && !isLairDoor) {
+                    squares[this.currentIndex].classList.remove(this.className, 'ghost', 'scared-ghost', 'eaten-ghost');
+                    
+                    this.currentIndex = newIndex;
+                    this.lastDirection = nextDirection;
+
+                    squares[this.currentIndex].classList.add(this.className, 'ghost');
+                    
+                    if (this.isFrightened) {
+                        squares[this.currentIndex].classList.add('scared-ghost');
+                    } else if (this.isEaten) {
+                        squares[this.currentIndex].classList.add('eaten-ghost');
+                    }
+                    
+                    this.checkCollision();
+                } else {
+                    // If blocked, force a recalculation next tick by changing lastDirection temporarily
+                    this.lastDirection = nextDirection; 
+                }
+            }
+
+            // Called when pacman eats a power pellet
+            frighten() {
+                if (this.isEaten) return;
+                this.isFrightened = true;
+                ghostScoreMultiplier = 1; // Reset multiplier on new pellet
+                squares[this.currentIndex].classList.add('scared-ghost');
+                
+                // Timer to end frightened mode
+                clearTimeout(this.frightenTimer);
+                this.frightenTimer = setTimeout(() => {
+                    this.isFrightened = false;
+                    if (!this.isEaten) {
+                        squares[this.currentIndex].classList.remove('scared-ghost');
+                    }
+                }, GHOST_FRIGHTENED_DURATION);
+            }
+
+            // Called when pacman eats the ghost
+            eat() {
+                this.isEaten = true;
+                this.isFrightened = false;
+                squares[this.currentIndex].classList.remove('scared-ghost');
+                squares[this.currentIndex].classList.add('eaten-ghost');
+                this.speed = 100; // Speed up return to lair
+            }
+
+            checkCollision() {
+                if (this.currentIndex === pacmanCurrentIndex) {
+                    if (this.isFrightened) {
+                        // Pacman eats ghost: Score 200 * multiplier
+                        const points = 200 * ghostScoreMultiplier;
+                        score += points;
+                        scoreDisplay.textContent = score;
+                        
+                        // Increase multiplier for next ghost
+                        ghostScoreMultiplier *= 2; 
+
+                        this.eat();
+                    } else if (!this.isEaten) {
+                        // Ghost eats Pacman
+                        endLife();
+                    }
+                }
+            }
+        }
+
+        const ghosts = [
+            new Ghost('blinky', 209, 250, 'chase'), // Blinky (Red) - Chaser
+            new Ghost('pinky', 210, 300, 'random'), // Pinky (Pink) - Simple random for now
+            new Ghost('inky', 211, 350, 'random'), // Inky (Cyan) - Simple random for now
+            new Ghost('clyde', 212, 400, 'random'), // Clyde (Orange) - Start inside lair now
+        ];
+        // Ensure initial speeds are set correctly on the objects
+        ghosts.forEach(g => g.originalSpeed = g.speed);
+
+
+        // --- GAME FUNCTIONS ---
+
+        function createBoard() {
+            board.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+            squares = [];
+            totalDots = 0;
+            dotsEaten = 0;
+
+            initialLayout.forEach((cell, index) => {
+                const square = document.createElement('div');
+                square.classList.add('square');
+                
+                // Determine content based on layout key
+                if (cell === 1) {
+                    square.classList.add('wall');
+                } else if (cell === 2) {
+                    square.classList.add('dot');
+                    totalDots++;
+                } else if (cell === 3) {
+                    square.classList.add('power-pellet');
+                    totalDots++; // Count power pellets towards win condition
+                }
+                
+                board.appendChild(square);
+                squares.push(square);
+            });
+            // Teleport the pacman placeholder to the correct start
+            squares[pacmanCurrentIndex].classList.add('pac-man', pacmanDirection);
+        }
+
+        function checkWin() {
+            if (dotsEaten === totalDots) {
+                isGameRunning = false;
+                clearInterval(pacmanIntervalId);
+                showMessage('YOU WIN!', `You cleared the maze with a score of ${score}!`, true);
+            }
+        }
+
+        function checkDot() {
+            if (squares[pacmanCurrentIndex].classList.contains('dot')) {
+                score += 10;
+                dotsEaten++;
+                squares[pacmanCurrentIndex].classList.remove('dot');
+            } else if (squares[pacmanCurrentIndex].classList.contains('power-pellet')) {
+                score += 50;
+                dotsEaten++;
+                squares[pacmanCurrentIndex].classList.remove('power-pellet');
+                
+                // FRIGHTEN GHOSTS!
+                ghosts.forEach(ghost => ghost.frighten());
+            }
+            scoreDisplay.textContent = score;
+            checkWin();
+        }
+
+        // Moves Pac-Man based on the current requestedDirection
+        function movePacmanInLoop() {
+            if (!isGameRunning) return;
+
+            let directionToAttempt = PACMAN_DIRECTIONS[requestedDirection] || PACMAN_DIRECTIONS[pacmanDirection];
+            let newIndex = pacmanCurrentIndex + directionToAttempt;
+            let newDirectionClass = requestedDirection.toLowerCase().replace('arrow', '');
+
+            // 1. Check the requested direction first
+            let isRequestedMoveValid = false;
+            if (PACMAN_DIRECTIONS[requestedDirection]) {
+                const attemptedIndex = pacmanCurrentIndex + PACMAN_DIRECTIONS[requestedDirection];
+                // Check if the attempted tile is a wall or ghost lair door
+                if (squares[attemptedIndex] && !squares[attemptedIndex].classList.contains('wall') && initialLayout[attemptedIndex] !== 5) {
+                    isRequestedMoveValid = true;
+                    newIndex = attemptedIndex;
+                    pacmanDirection = newDirectionClass;
+                }
+            }
+
+            // 2. If requested move is invalid or not set, check the last continuous direction
+            if (!isRequestedMoveValid) {
+                directionToAttempt = PACMAN_DIRECTIONS[pacmanDirection];
+                newIndex = pacmanCurrentIndex + directionToAttempt;
+                newDirectionClass = pacmanDirection;
+            }
+
+            // Handle tunnel teleport (edge cases)
+            if (pacmanCurrentIndex === 179 && directionToAttempt === 1) { // Right tunnel exit
+                newIndex = 160;
+            } else if (pacmanCurrentIndex === 160 && directionToAttempt === -1) { // Left tunnel exit
+                newIndex = 179;
+            }
+
+            // Final validation against walls/lair door
+            if (!squares[newIndex] || squares[newIndex].classList.contains('wall') || initialLayout[newIndex] === 5) {
+                return; // Cannot move
+            }
+
+            // Apply movement
+            squares[pacmanCurrentIndex].classList.remove('pac-man', 'up', 'down', 'left', 'right');
+
+            pacmanCurrentIndex = newIndex;
+            squares[pacmanCurrentIndex].classList.add('pac-man', pacmanDirection);
+
+            checkDot();
+            
+            // Check for collisions after moving Pacman
+            ghosts.forEach(ghost => ghost.checkCollision());
+        }
+        
+        // The main game loop function
+        function gameLoop() {
+            movePacmanInLoop();
+            ghosts.forEach(ghost => ghost.gameLoopMove());
+        }
+
+        function endLife() {
+            lives--;
+            livesDisplay.textContent = lives;
+            squares[pacmanCurrentIndex].classList.remove('pac-man', pacmanDirection);
+
+            if (lives <= 0) {
+                isGameRunning = false;
+                clearInterval(pacmanIntervalId);
+                showMessage('GAME OVER', `Your final score was ${score}.`, false);
+                return;
+            }
+
+            // Stop movement and reset positions
+            clearInterval(pacmanIntervalId);
+            pacmanCurrentIndex = 369; // Reset Pac-Man to the now-open start position
+            pacmanDirection = 'right';
+            requestedDirection = 'ArrowRight'; // Reset initial direction
+            squares[pacmanCurrentIndex].classList.add('pac-man', pacmanDirection);
+
+            ghosts.forEach(ghost => {
+                squares[ghost.currentIndex].classList.remove(ghost.className, 'ghost', 'scared-ghost', 'eaten-ghost');
+                ghost.currentIndex = ghost.startIndex;
+                ghost.isFrightened = false;
+                ghost.isEaten = false;
+                ghost.speed = ghost.originalSpeed;
+                squares[ghost.currentIndex].classList.add(ghost.className, 'ghost');
+            });
+
+            // Brief pause before resuming
+            setTimeout(() => {
+                pacmanIntervalId = setInterval(gameLoop, PACMAN_SPEED);
+                isGameRunning = true;
+            }, 1000); // 1 second pause
+        }
+
+        function showMessage(title, content, isWin) {
+            messageTitle.textContent = title;
+            messageContent.textContent = content;
+            messageBox.classList.add('active');
+            isGameRunning = false;
+            clearInterval(pacmanIntervalId);
+        }
+
+        // --- INPUT HANDLING ---
+
+        function handleKey(e) {
+            if (isGameRunning && PACMAN_DIRECTIONS[e.key]) {
+                requestedDirection = e.key;
+            }
+        }
+
+        // Mobile Controls
+        document.querySelectorAll('.mobile-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const moveKey = e.currentTarget.getAttribute('data-move');
+                if (moveKey !== 'Stop') {
+                    requestedDirection = moveKey;
+                }
+            });
+        });
+
+
+        // --- SWIPE / TOUCH CONTROLS for more natural mobile interaction ---
+        let touchstartX = 0;
+        let touchstartY = 0;
+        
+        board.addEventListener('touchstart', (e) => {
+            touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
+            e.preventDefault(); 
+        }, false);
+        
+        board.addEventListener('touchend', (e) => {
+            let touchendX = e.changedTouches[0].screenX;
+            let touchendY = e.changedTouches[0].screenY;
+            handleGesture(touchstartX, touchendX, touchstartY, touchendY);
+            e.preventDefault();
+        }, false);
+        
+        function handleGesture(startX, endX, startY, endY) {
+            const deltaX = endX - startX;
+            const deltaY = endY - startY;
+            const minSwipeDistance = 20;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                // Horizontal Swipe
+                if (deltaX > 0) {
+                    requestedDirection = 'ArrowRight';
+                } else {
+                    requestedDirection = 'ArrowLeft';
+                }
+            } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                // Vertical Swipe
+                if (deltaY > 0) {
+                    requestedDirection = 'ArrowDown';
+                } else {
+                    requestedDirection = 'ArrowUp';
+                }
+            }
+        }
+
+
+        // --- GAME INITIALIZATION ---
+
+        function startGame() {
+            // Clear previous game loop
+            clearInterval(pacmanIntervalId); 
+            
+            // Reset state
+            messageBox.classList.remove('active');
+            score = 0;
+            lives = 3;
+            pacmanCurrentIndex = 369;
+            pacmanDirection = 'right';
+            requestedDirection = 'ArrowRight';
+            ghostScoreMultiplier = 1;
+            scoreDisplay.textContent = score;
+            livesDisplay.textContent = lives;
+
+            // Clear old board and create new one from fresh layout
+            board.innerHTML = '';
+            createBoard();
+
+            // Place Pacman and Ghosts in starting positions
+            squares[pacmanCurrentIndex].classList.add('pac-man', pacmanDirection);
+            ghosts.forEach(ghost => {
+                ghost.currentIndex = ghost.startIndex;
+                ghost.isFrightened = false;
+                ghost.isEaten = false;
+                ghost.speed = ghost.originalSpeed;
+                squares[ghost.currentIndex].classList.add(ghost.className, 'ghost');
+            });
+
+            isGameRunning = true;
+            pacmanIntervalId = setInterval(gameLoop, PACMAN_SPEED);
+        }
+
+        // Wait for all HTML elements to be loaded before starting
+        window.onload = () => {
+            document.addEventListener('keyup', handleKey);
+            showMessage('Welcome to Pac-Man!', 'Use Arrow Keys or Swipe/Tap the virtual D-Pad to move. Eat the power pellets to eat the ghosts! Click Play Again to begin.', false);
+        };
+    </script>
+</body>
+</html>

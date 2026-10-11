@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hangman Game</title>
+
+<style>
+/* ---------- GENERAL PAGE STYLE ---------- */
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #010332, #29011c); /* Deep Space gradient */
+  color: #fff;
+  text-align: center;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.5s ease;
+}
+
+h1 {
+  color: #f8f8f8; /* soft white for contrast */
+  font-weight: 700;
+  margin-bottom: 25px;
+  font-size: 2.5rem;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+}
+
+/* ---------- GAME CONTAINER ---------- */
+.container {
+  background: rgba(10, 10, 30, 0.85); /* semi-transparent dark container */
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+  padding: 40px 30px;
+  width: 90%;
+  max-width: 650px;
+  animation: fadeSlideUp 0.6s ease;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- CATEGORY ---------- */
+#category {
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: #ff6f91; /* subtle neon pink accent */
+  font-weight: 600;
+  text-shadow: 1px 1px 5px rgba(0,0,0,0.6);
+}
+
+/* ---------- CANVAS ---------- */
+#hangmanCanvas {
+  background: rgba(20, 20, 50, 0.8); /* dark canvas */
+  border-radius: 20px;
+  border: 2px solid #3a003f;
+  margin-bottom: 25px;
+  width: 250px;
+  height: 250px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* ---------- WORD DISPLAY ---------- */
+#wordDisplay {
+  font-size: 2.2rem;
+  letter-spacing: 10px;
+  margin-bottom: 25px;
+  font-weight: 700;
+  color: #f8f8f8; /* white for readability */
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.7);
+}
+
+/* ---------- KEYBOARD ---------- */
+#keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.key {
+  background: #1c0033; /* deep purple button */
+  border: 1px solid #3a003f;
+  color: #ff6f91; /* neon pink text */
+  padding: 14px 18px;
+  font-size: 1.1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+}
+
+.key:hover {
+  background: #ff6f91; /* neon pink on hover */
+  color: #1c0033; /* dark text */
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 6px 12px rgba(255,111,145,0.6);
+}
+
+.key:disabled {
+  background: #3a003f;
+  color: #555;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ---------- SCOREBOARD ---------- */
+#scoreboard {
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #ff6f91;
+  text-shadow: 1px 1px 5px rgba(0,0,0,0.6);
+}
+
+/* ---------- RESULT MODAL ---------- */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: modalFade 0.4s ease;
+}
+
+@keyframes modalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: #1c0033; /* dark modal background */
+  color: #fff;
+  border-radius: 18px;
+  padding: 35px 25px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 12px 25px rgba(0,0,0,0.7);
+  animation: scaleUp 0.4s ease;
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+#playAgain {
+  background: #ff6f91; /* neon pink button */
+  color: #1c0033;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  margin-top: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+#playAgain:hover {
+  background: #f53f7f;
+  transform: translateY(-3px) scale(1.05);
+}
+</style>
+
+
+
+</head>
+
+<body>
+  <h1>🎯 Hangman Game</h1>
+  <div class="container">
+    <div id="scoreboard">
+      Attempts Left: <span id="attemptsLeft">6</span>
+    </div>
+    <div id="category"></div>
+    <canvas id="hangmanCanvas" width="250" height="250"></canvas>
+    <div id="wordDisplay"></div>
+    <div id="keyboard"></div>
+  </div>
+
+  <!-- Result Modal -->
+  <div id="resultModal" class="modal">
+    <div class="modal-content">
+      <h2 id="resultTitle"></h2>
+      <p id="resultText"></p>
+      <button id="playAgain">Play Again</button>
+    </div>
+  </div>
+
+<script>
+const words = [
+  { word: "ELEPHANT", category: "Animal" },
+  { word: "MOUNTAIN", category: "Place" },
+  { word: "WINDOW", category: "Object" },
+  { word: "JAVASCRIPT", category: "Programming" },
+  { word: "BICYCLE", category: "Transport" },
+  { word: "PINEAPPLE", category: "Fruit" },
+  { word: "KANGAROO", category: "Animal" },
+  { word: "VOLCANO", category: "Place" },
+  { word: "UMBRELLA", category: "Object" },
+  { word: "PYTHON", category: "Programming" },
+  { word: "AIRPLANE", category: "Transport" },
+  { word: "STRAWBERRY", category: "Fruit" }
+];
+
+
+  let selectedWordData, selectedWord, displayWord, attemptsLeft;
+  const canvas = document.getElementById("hangmanCanvas");
+  const ctx = canvas.getContext("2d");
+  const wordDisplay = document.getElementById("wordDisplay");
+  const categoryDisplay = document.getElementById("category");
+  const keyboard = document.getElementById("keyboard");
+  const modal = document.getElementById("resultModal");
+  const resultTitle = document.getElementById("resultTitle");
+  const resultText = document.getElementById("resultText");
+  const playAgain = document.getElementById("playAgain");
+  const attemptsLeftDisplay = document.getElementById("attemptsLeft");
+
+  function initGame() {
+    selectedWordData = words[Math.floor(Math.random() * words.length)];
+    selectedWord = selectedWordData.word;
+    displayWord = Array(selectedWord.length).fill("_");
+    attemptsLeft = 6;
+    attemptsLeftDisplay.textContent = attemptsLeft;
+    categoryDisplay.textContent = `Category: ${selectedWordData.category}`;
+    wordDisplay.textContent = displayWord.join(" ");
+    keyboard.innerHTML = "";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    modal.style.display = "none";
+    generateKeyboard();
+  }
+
+  function drawHangman() {
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#333";
+    if (attemptsLeft === 5) {
+      ctx.beginPath();
+      ctx.moveTo(20, 240);
+      ctx.lineTo(230, 240);
+      ctx.stroke();
+    } else if (attemptsLeft === 4) {
+      ctx.beginPath();
+      ctx.moveTo(60, 240);
+      ctx.lineTo(60, 30);
+      ctx.lineTo(160, 30);
+      ctx.lineTo(160, 55);
+      ctx.stroke();
+    } else if (attemptsLeft === 3) {
+      ctx.beginPath();
+      ctx.arc(160, 80, 18, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (attemptsLeft === 2) {
+      ctx.beginPath();
+      ctx.moveTo(160, 98);
+      ctx.lineTo(160, 160);
+      ctx.stroke();
+    } else if (attemptsLeft === 1) {
+      ctx.beginPath();
+      ctx.moveTo(160, 110);
+      ctx.lineTo(130, 140);
+      ctx.moveTo(160, 110);
+      ctx.lineTo(190, 140);
+      ctx.stroke();
+    } else if (attemptsLeft === 0) {
+      ctx.beginPath();
+      ctx.moveTo(160, 160);
+      ctx.lineTo(130, 200);
+      ctx.moveTo(160, 160);
+      ctx.lineTo(190, 200);
+      ctx.stroke();
+    }
+  }
+
+  function generateKeyboard() {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (let letter of letters) {
+      const btn = document.createElement("button");
+      btn.textContent = letter;
+      btn.className = "key";
+      btn.addEventListener("click", () => handleGuess(letter, btn));
+      keyboard.appendChild(btn);
+    }
+  }
+
+  function handleGuess(letter, btn) {
+    btn.disabled = true;
+    if (selectedWord.includes(letter)) {
+      for (let i = 0; i < selectedWord.length; i++) {
+        if (selectedWord[i] === letter) displayWord[i] = letter;
+      }
+      wordDisplay.textContent = displayWord.join(" ");
+      if (!displayWord.includes("_")) showResult(true);
+    } else {
+      attemptsLeft--;
+      attemptsLeftDisplay.textContent = attemptsLeft;
+      drawHangman();
+      if (attemptsLeft === 0) showResult(false);
+    }
+  }
+
+  function showResult(isWin) {
+    modal.style.display = "flex";
+    resultTitle.textContent = isWin ? "🎉 You Won!" : "💀 Game Over!";
+    resultText.textContent = isWin
+      ? `You guessed the word: ${selectedWord}`
+      : `The correct word was: ${selectedWord}`;
+  }
+
+  playAgain.addEventListener("click", initGame);
+  initGame();
+</script>
+</body>
+</html>
